@@ -10,12 +10,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str):
-    password = password[:72]  # truncate to avoid bcrypt error
+    # hash first → avoids bcrypt 72-byte limit
+    password = hashlib.sha256(password.encode()).hexdigest()
     return pwd_context.hash(password)
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(password: str, hashed: str):
+    password = hashlib.sha256(password.encode()).hexdigest()
+    return pwd_context.verify(password, hashed)
 
 
 def create_access_token(user_id: str) -> str:
