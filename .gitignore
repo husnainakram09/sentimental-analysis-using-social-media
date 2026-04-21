@@ -1,0 +1,65 @@
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Python (Backend)
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+
+# Model files (optional)
+*.joblib
+*.pkl
+
+# =========================
+# Node.js / React (Frontend)
+# =========================
+node_modules/
+dist/
+build/
+
+# Vite
+.vite/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Testing / Coverage
+# =========================
+coverage/
+.pytest_cache/
+
+# =========================
+# Misc
+# =========================
+*.swp
+*.swo
