@@ -11,12 +11,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str):
     # hash first → avoids bcrypt 72-byte limit
-    password = hashlib.sha256(password.encode()).hexdigest()
+    password = password[:72]  # truncate to avoid bcrypt error
     return pwd_context.hash(password)
 
 
 def verify_password(password: str, hashed: str):
-    password = hashlib.sha256(password.encode()).hexdigest()
+    password = password[:72]
     return pwd_context.verify(password, hashed)
 
 
