@@ -15,6 +15,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 1440
 
+    x_client_id: str = ""
+    x_client_secret: str = ""
+    x_redirect_uri: str = ""
+    x_scopes: str = "tweet.read users.read offline.access"
+    x_auth_url: str = "https://x.com/i/oauth2/authorize"
+    x_token_url: str = "https://api.x.com/2/oauth2/token"
+    x_revoke_url: str = "https://api.x.com/2/oauth2/revoke"
+    x_api_base_url: str = "https://api.x.com/2"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -25,6 +34,10 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def x_scope_list(self) -> list[str]:
+        return [scope.strip() for scope in self.x_scopes.split() if scope.strip()]
 
 
 @lru_cache

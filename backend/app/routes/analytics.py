@@ -30,6 +30,7 @@ def stats(current_user=Depends(get_current_user)):
         "negative": collection.count_documents({"user_id": uid, "label": "negative"}),
         "neutral": collection.count_documents({"user_id": uid, "label": "neutral"}),
         "positive": collection.count_documents({"user_id": uid, "label": "positive"}),
+        "x_imported": collection.count_documents({"user_id": uid, "source": "x"}),
     }
 
 

@@ -6,6 +6,7 @@ from .database import init_indexes
 from .routes.auth import router as auth_router
 from .routes.predictions import router as predictions_router
 from .routes.analytics import router as analytics_router
+from .routes.x_auth import router as x_auth_router
 from .services.model_service import model_service
 
 settings = get_settings()
@@ -21,7 +22,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title=settings.app_name, version="3.0.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="4.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -44,3 +45,4 @@ def health():
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(predictions_router, prefix=settings.api_prefix)
 app.include_router(analytics_router, prefix=settings.api_prefix)
+app.include_router(x_auth_router, prefix=settings.api_prefix)

@@ -12,6 +12,9 @@ import {
   ShieldCheck,
   LogOut,
   Search,
+  RefreshCw,
+  Twitter,
+  Link as LinkIcon,
 } from 'lucide-react'
 import {
   PieChart,
@@ -51,11 +54,18 @@ function sentimentBadge(sentiment) {
   return map[sentiment] || 'bg-slate-100 text-slate-700'
 }
 
+function normalizeError(err, fallback) {
+  const detail = err?.response?.data?.detail
+  if (Array.isArray(detail) && detail.length > 0) return detail[0]?.msg || fallback
+  return detail || fallback
+}
+
 function AuthScreen({ onAuthSuccess }) {
   const [tab, setTab] = useState('login')
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [xLoading, setXLoading] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -71,10 +81,21 @@ function AuthScreen({ onAuthSuccess }) {
       localStorage.setItem('user', JSON.stringify(data.user))
       onAuthSuccess(data.user)
     } catch (err) {
-      console.log(err?.response)
-      setError(err?.response?.data?.detail[0]?.msg || err?.response?.data?.detail || 'Authentication failed')
+      setError(normalizeError(err, 'Authentication failed'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loginWithX = async () => {
+    setXLoading(true)
+    setError('')
+    try {
+      const { data } = await api.get('/x/auth/login', { params: { frontend_url: window.location.origin } })
+      window.location.href = data.authorization_url
+    } catch (err) {
+      setError(normalizeError(err, 'Unable to start X login'))
+      setXLoading(false)
     }
   }
 
@@ -86,7 +107,7 @@ function AuthScreen({ onAuthSuccess }) {
             <MessageSquare className="h-10 w-10" />
             <div>
               <h1 className="text-3xl font-bold">Sentiment Analysis</h1>
-              <p className="mt-2 text-indigo-100">Private user dashboard with login, analytics, and history.</p>
+              <p className="mt-2 text-indigo-100">Private dashboard with email login or Sign in with X.</p>
             </div>
           </div>
           <div className="mt-10 space-y-5">
@@ -95,30 +116,37 @@ function AuthScreen({ onAuthSuccess }) {
               <p className="mt-1 text-sm text-indigo-100">Each user sees only their own predictions and charts.</p>
             </div>
             <div className="rounded-2xl bg-white/10 p-4">
-              <p className="font-semibold">Prediction history</p>
-              <p className="mt-1 text-sm text-indigo-100">Every prediction is saved with confidence and timestamp.</p>
+              <p className="font-semibold">Sign in with X</p>
+              <p className="mt-1 text-sm text-indigo-100">Connect your X account, import your recent tweets, and analyze sentiment instantly.</p>
             </div>
             <div className="rounded-2xl bg-white/10 p-4">
-              <p className="font-semibold">Dashboard analytics</p>
-              <p className="mt-1 text-sm text-indigo-100">Pie chart, trend chart, and searchable history.</p>
+              <p className="font-semibold">History and trends</p>
+              <p className="mt-1 text-sm text-indigo-100">Every manual prediction and imported tweet is stored with time and confidence.</p>
             </div>
           </div>
         </div>
 
         <div className="p-10">
           <div className="mb-8 flex rounded-2xl bg-slate-100 p-1">
-            <button onClick={() => setTab('login')} className={`flex-1 rounded-2xl px-4 py-3 font-medium ${tab === 'login' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>
-              Login
-            </button>
-            <button onClick={() => setTab('register')} className={`flex-1 rounded-2xl px-4 py-3 font-medium ${tab === 'register' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>
-              Register
-            </button>
+            <button onClick={() => setTab('login')} className={`flex-1 rounded-2xl px-4 py-3 font-medium ${tab === 'login' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>Login</button>
+            <button onClick={() => setTab('register')} className={`flex-1 rounded-2xl px-4 py-3 font-medium ${tab === 'register' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>Register</button>
           </div>
 
           <h2 className="text-3xl font-bold text-slate-900">{tab === 'login' ? 'Welcome back' : 'Create account'}</h2>
-          <p className="mt-2 text-slate-500">{tab === 'login' ? 'Login to access your personal dashboard.' : 'Register a new user to get a private dashboard.'}</p>
+          <p className="mt-2 text-slate-500">{tab === 'login' ? 'Login to access your personal dashboard.' : 'Register a new user or continue with X.'}</p>
 
-          <form onSubmit={submit} className="mt-8 space-y-4">
+          <button onClick={loginWithX} disabled={xLoading} className="mt-6 flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-300 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+            <Twitter className="h-5 w-5" />
+            {xLoading ? 'Redirecting to X...' : 'Continue with X'}
+          </button>
+
+          <div className="my-6 flex items-center gap-4 text-sm text-slate-400">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span>or continue with email</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
             {tab === 'register' && (
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Full name</label>
@@ -134,7 +162,7 @@ function AuthScreen({ onAuthSuccess }) {
               <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-indigo-400" required />
             </div>
             {error && <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>}
-            <button type='submit' disabled={loading} className="w-full rounded-2xl bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
+            <button disabled={loading} className="w-full rounded-2xl bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
               {loading ? 'Please wait...' : tab === 'login' ? 'Login' : 'Create account'}
             </button>
           </form>
@@ -197,6 +225,50 @@ function PredictPanel({ onPredict, loading, result }) {
   )
 }
 
+function XPanel({ xProfile, onRefreshTweets, importing }) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">X Integration</h2>
+          <p className="mt-2 text-slate-500">Import recent tweets from the connected X account and analyze them with your sentiment model.</p>
+        </div>
+        <div className="rounded-2xl bg-slate-100 p-3">
+          <Twitter className="h-6 w-6 text-slate-700" />
+        </div>
+      </div>
+
+      {!xProfile?.connected ? (
+        <div className="mt-6 rounded-2xl bg-slate-50 p-5 text-slate-600">No X account connected yet. Use the Continue with X button on the login screen.</div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          <div className="flex items-center justify-between rounded-2xl border border-slate-200 p-4">
+            <div>
+              <div className="text-sm text-slate-500">Connected profile</div>
+              <div className="mt-1 text-xl font-semibold">{xProfile.name || xProfile.username}</div>
+              <div className="text-sm text-slate-500">@{xProfile.username}</div>
+            </div>
+            <button onClick={onRefreshTweets} disabled={importing} className="flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 font-medium text-white disabled:opacity-50">
+              <RefreshCw className={`h-4 w-4 ${importing ? 'animate-spin' : ''}`} />
+              {importing ? 'Importing...' : 'Import Latest Tweets'}
+            </button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <div className="text-sm text-slate-500">Imported tweet analyses</div>
+              <div className="mt-2 text-2xl font-bold">{xProfile.imported_tweet_count ?? 0}</div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <div className="text-sm text-slate-500">X user ID</div>
+              <div className="mt-2 text-sm font-semibold text-slate-700">{xProfile.x_user_id}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState(() => {
     try {
@@ -208,34 +280,48 @@ export default function App() {
   })
   const [active, setActive] = useState('dashboard')
   const [search, setSearch] = useState('')
-  const [stats, setStats] = useState({ total_predictions: 0, positive: 0, neutral: 0, negative: 0 })
+  const [stats, setStats] = useState({ total_predictions: 0, positive: 0, neutral: 0, negative: 0, x_imported: 0 })
   const [history, setHistory] = useState([])
   const [trends, setTrends] = useState([])
   const [result, setResult] = useState(null)
+  const [xProfile, setXProfile] = useState({ connected: false, imported_tweet_count: 0 })
   const [loading, setLoading] = useState(false)
+  const [importingTweets, setImportingTweets] = useState(false)
 
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    window.history.replaceState({}, document.title, window.location.pathname)
     setUser(null)
+    setXProfile({ connected: false, imported_tweet_count: 0 })
   }
 
   const loadDashboard = async () => {
-    const [statsRes, historyRes, trendsRes] = await Promise.all([
+    const [statsRes, historyRes, trendsRes, xRes] = await Promise.all([
       api.get('/analytics/stats'),
       api.get('/analytics/history?limit=50'),
       api.get('/analytics/trends'),
+      api.get('/x/me'),
     ])
     setStats(statsRes.data)
     setHistory(historyRes.data.history)
     setTrends(trendsRes.data.trends)
+    setXProfile(xRes.data)
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const xToken = params.get('x_token')
+    if (xToken) {
+      localStorage.setItem('token', xToken)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+
     const init = async () => {
       if (!localStorage.getItem('token')) return
       try {
         const { data } = await api.get('/auth/me')
+        localStorage.setItem('user', JSON.stringify(data))
         setUser(data)
         await loadDashboard()
       } catch {
@@ -264,7 +350,7 @@ export default function App() {
       await loadDashboard()
       setActive('dashboard')
     } catch (err) {
-      alert(err?.response?.data?.detail || 'Prediction failed')
+      alert(normalizeError(err, 'Prediction failed'))
     } finally {
       setLoading(false)
     }
@@ -274,7 +360,7 @@ export default function App() {
     const file = e.target.files?.[0]
     if (!file) return
     const text = await file.text()
-    const rows = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    const rows = text.split('\n').map((line) => line.replace('\r', '').trim()).filter(Boolean)
     if (!rows.length) return
     try {
       setLoading(true)
@@ -283,10 +369,24 @@ export default function App() {
       setActive('history')
       alert('Batch analysis completed')
     } catch (err) {
-      alert(err?.response?.data?.detail || 'Batch prediction failed')
+      alert(normalizeError(err, 'Batch prediction failed'))
     } finally {
       setLoading(false)
       e.target.value = ''
+    }
+  }
+
+  const handleImportTweets = async () => {
+    try {
+      setImportingTweets(true)
+      const { data } = await api.post('/x/import-self?max_results=10')
+      await loadDashboard()
+      setActive('history')
+      alert(`Imported ${data.imported_count} tweets and skipped ${data.skipped_count}.`)
+    } catch (err) {
+      alert(normalizeError(err, 'Unable to import tweets from X'))
+    } finally {
+      setImportingTweets(false)
     }
   }
 
@@ -322,7 +422,8 @@ export default function App() {
           <div className="mt-auto space-y-4">
             <div className="rounded-2xl border border-slate-200 p-4">
               <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-green-600" /><span className="font-medium text-slate-700">Connected</span></div>
-              <p className="mt-2 text-sm text-slate-500">{user.email}</p>
+              <p className="mt-2 text-sm text-slate-500">{user.email || `@${user.x_username || 'x-user'}`}</p>
+              {user.x_connected && <p className="mt-1 text-xs text-slate-400">Signed in with X</p>}
             </div>
             <button onClick={logout} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white"><LogOut className="h-5 w-5" /> Logout</button>
           </div>
@@ -340,98 +441,105 @@ export default function App() {
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Total Predictions" value={stats.total_predictions} subtitle="All time" icon={MessageSquare} iconClass="bg-indigo-600" />
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <StatCard title="Total Predictions" value={stats.total_predictions} subtitle="All sources" icon={MessageSquare} iconClass="bg-indigo-600" />
             <StatCard title="Positive" value={stats.positive} subtitle={`${stats.total_predictions ? ((stats.positive / stats.total_predictions) * 100).toFixed(1) : 0}%`} icon={SmilePlus} iconClass="bg-green-500" />
             <StatCard title="Neutral" value={stats.neutral} subtitle={`${stats.total_predictions ? ((stats.neutral / stats.total_predictions) * 100).toFixed(1) : 0}%`} icon={Meh} iconClass="bg-amber-500" />
             <StatCard title="Negative" value={stats.negative} subtitle={`${stats.total_predictions ? ((stats.negative / stats.total_predictions) * 100).toFixed(1) : 0}%`} icon={Frown} iconClass="bg-red-500" />
+            <StatCard title="Imported from X" value={stats.x_imported || 0} subtitle={xProfile.connected ? `@${xProfile.username}` : 'Not connected'} icon={Twitter} iconClass="bg-slate-800" />
           </div>
 
-          {active === 'predict' && <div className="mt-6"><PredictPanel onPredict={handlePredict} loading={loading} result={result} /></div>}
-
-          {active === 'batch' && (
-            <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-bold text-slate-900">Batch Analysis</h2>
-              <p className="mt-2 text-slate-500">Upload a .txt file with one text item per line.</p>
-              <input type="file" accept=".txt,.csv" onChange={handleBatchUpload} className="mt-4 block" disabled={loading} />
-              <p className="mt-3 text-sm text-slate-500">CSV support works best when each line contains one text input.</p>
+          <div className="mt-6 grid gap-6 xl:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-2xl font-bold text-slate-900">Sentiment Distribution</h2>
+              <div className="mt-4 h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={120} labelLine={false} label={({ percent }) => `${(percent * 100).toFixed(1)}%`}>
+                      {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          )}
 
-          {(active === 'dashboard' || active === 'history' || active === 'about') && (
-            <>
-              <div className="mt-6 grid gap-6 xl:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-2xl font-bold text-slate-900">Sentiment Distribution</h2>
-                  <div className="mt-4 h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={120} labelLine={false} label={({ percent }) => `${(percent * 100).toFixed(1)}%`}>
-                          {pieData.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-2xl font-bold text-slate-900">Predictions Over Time</h2>
-                  <div className="mt-4 h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trends}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="positive" stroke={COLORS.positive} strokeWidth={3} />
-                        <Line type="monotone" dataKey="neutral" stroke={COLORS.neutral} strokeWidth={3} />
-                        <Line type="monotone" dataKey="negative" stroke={COLORS.negative} strokeWidth={3} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-2xl font-bold text-slate-900">Predictions Over Time</h2>
+              <div className="mt-4 h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trends}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="date" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="positive" stroke={COLORS.positive} strokeWidth={3} />
+                    <Line type="monotone" dataKey="neutral" stroke={COLORS.neutral} strokeWidth={3} />
+                    <Line type="monotone" dataKey="negative" stroke={COLORS.negative} strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
+            </div>
+          </div>
 
-              <div className="mt-6 rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div className="border-b border-slate-200 px-6 py-4"><h2 className="text-2xl font-bold text-slate-900">Recent Predictions</h2></div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-500">
-                      <tr>
-                        <th className="px-6 py-4 font-semibold">Text</th>
-                        <th className="px-6 py-4 font-semibold">Sentiment</th>
-                        <th className="px-6 py-4 font-semibold">Confidence</th>
-                        <th className="px-6 py-4 font-semibold">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredHistory.map((item, index) => (
-                        <tr key={`${item.created_at}-${index}`} className="border-t border-slate-100">
-                          <td className="px-6 py-4 text-slate-700">{item.text}</td>
-                          <td className="px-6 py-4"><span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${sentimentBadge(item.label)}`}>{item.label}</span></td>
-                          <td className="px-6 py-4 text-indigo-600">{item.confidence.toFixed(2)}</td>
-                          <td className="px-6 py-4 text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleString() : '-'}</td>
-                        </tr>
-                      ))}
-                      {!filteredHistory.length && (
-                        <tr><td colSpan="4" className="px-6 py-10 text-center text-slate-500">No history found yet.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          <div className="mt-6">
+            <XPanel xProfile={xProfile} onRefreshTweets={handleImportTweets} importing={importingTweets} />
+          </div>
 
-              {active === 'about' && (
-                <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h2 className="text-2xl font-bold text-slate-900">About this dashboard</h2>
-                  <p className="mt-3 text-slate-600">This version includes authentication, per-user private dashboards, stored prediction history, batch processing, and analytics powered by FastAPI and MongoDB.</p>
-                </div>
-              )}
-            </>
-          )}
+          <div className="mt-6">
+            <PredictPanel onPredict={handlePredict} loading={loading} result={result} />
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 px-6 py-4">
+              <h2 className="text-2xl font-bold text-slate-900">Recent Predictions</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold">Text</th>
+                    <th className="px-6 py-4 font-semibold">Source</th>
+                    <th className="px-6 py-4 font-semibold">Sentiment</th>
+                    <th className="px-6 py-4 font-semibold">Confidence</th>
+                    <th className="px-6 py-4 font-semibold">Link</th>
+                    <th className="px-6 py-4 font-semibold">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistory.map((item, index) => (
+                    <tr key={`${item.created_at}-${index}`} className="border-t border-slate-100">
+                      <td className="px-6 py-4 text-slate-700">{item.text}</td>
+                      <td className="px-6 py-4">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${item.source === 'x' ? 'bg-slate-100 text-slate-700' : 'bg-indigo-100 text-indigo-700'}`}>{item.source || 'manual'}</span>
+                      </td>
+                      <td className="px-6 py-4"><span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${sentimentBadge(item.label)}`}>{item.label}</span></td>
+                      <td className="px-6 py-4 text-indigo-600">{(item.confidence * 100).toFixed(2)}%</td>
+                      <td className="px-6 py-4">{item.x_permalink ? <a href={item.x_permalink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-slate-700 hover:text-indigo-600"><LinkIcon className="h-4 w-4" /> Tweet</a> : '-'}</td>
+                      <td className="px-6 py-4 text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleString() : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-bold text-slate-900">Batch Analysis</h2>
+            <p className="mt-2 text-slate-500">Upload a text file with one tweet or post per line.</p>
+            <input type="file" accept=".txt,.csv" onChange={handleBatchUpload} className="mt-4 block w-full rounded-2xl border border-slate-300 p-4 text-sm" />
+          </div>
+
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-bold text-slate-900">About this version</h2>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Email login and Sign in with X are both supported.</div>
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Each user has isolated history, stats, and imported tweet analyses.</div>
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">The backend uses FastAPI, MongoDB, JWT, and X OAuth 2.0 with PKCE.</div>
+            </div>
+          </div>
         </main>
       </div>
     </div>

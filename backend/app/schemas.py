@@ -15,7 +15,10 @@ class LoginRequest(BaseModel):
 class UserResponse(BaseModel):
     id: str
     name: str
-    email: EmailStr
+    email: EmailStr | None = None
+    auth_provider: str = "local"
+    x_username: str | None = None
+    x_connected: bool = False
 
 
 class AuthResponse(BaseModel):
@@ -49,6 +52,9 @@ class HistoryItem(BaseModel):
     label: str
     confidence: float
     created_at: str | None = None
+    source: str | None = None
+    x_tweet_id: str | None = None
+    x_permalink: str | None = None
 
 
 class HistoryResponse(BaseModel):
@@ -60,6 +66,7 @@ class StatsResponse(BaseModel):
     negative: int
     neutral: int
     positive: int
+    x_imported: int = 0
 
 
 class TrendPoint(BaseModel):
@@ -71,3 +78,22 @@ class TrendPoint(BaseModel):
 
 class TrendsResponse(BaseModel):
     trends: list[TrendPoint]
+
+
+class XAuthStartResponse(BaseModel):
+    authorization_url: str
+
+
+class XProfileResponse(BaseModel):
+    connected: bool
+    username: str | None = None
+    name: str | None = None
+    x_user_id: str | None = None
+    profile_image_url: str | None = None
+    imported_tweet_count: int = 0
+
+
+class XImportResponse(BaseModel):
+    imported_count: int
+    skipped_count: int
+    results: list[PredictResponse]

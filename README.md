@@ -1,4 +1,4 @@
-# Sentiment Analysis App (Multi-User Version)
+# Sentiment Analysis App (Multi-User + Sign in with X)
 
 This version includes:
 - React + Tailwind dashboard inspired by a modern analytics layout
@@ -6,7 +6,8 @@ This version includes:
 - MongoDB storage for users and per-user prediction history
 - Private dashboard analytics for each user
 - Single prediction and batch prediction
-- Sentiment distribution pie chart and trend chart
+- Sign in with X using OAuth 2.0 Authorization Code Flow with PKCE
+- Import and analyze recent tweets from the connected X account
 
 ## Backend setup
 
@@ -29,10 +30,22 @@ copy .env.example .env
 npm run dev
 ```
 
+## X developer setup
+
+1. Create an app in the X developer console.
+2. Enable OAuth 2.0 Authorization Code Flow with PKCE.
+3. Set callback URL to: `http://127.0.0.1:8000/api/v1/x/auth/callback` for local development.
+4. Copy `X_CLIENT_ID`, `X_CLIENT_SECRET` (if using confidential client), and `X_REDIRECT_URI` into `backend/.env`.
+5. Recommended scopes: `tweet.read users.read offline.access`.
+
 ## Important API routes
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
+- `GET /api/v1/x/auth/login?frontend_url=http://localhost:5173`
+- `GET /api/v1/x/auth/callback`
+- `GET /api/v1/x/me`
+- `POST /api/v1/x/import-self`
 - `POST /api/v1/predictions/predict`
 - `POST /api/v1/predictions/batch`
 - `GET /api/v1/analytics/stats`
@@ -41,5 +54,7 @@ npm run dev
 
 ## Notes
 - Every prediction is stored against the authenticated user.
+- Imported tweets are stored with `source = x` and include tweet links when available.
 - Dashboard history and charts are filtered by `user_id`.
 - Make sure MongoDB is running before using the authenticated app.
+- Add `backend/runtime.txt` for Render to use Python 3.11.9.
